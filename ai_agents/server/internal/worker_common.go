@@ -35,6 +35,8 @@ type WorkerUpdateReq struct {
 	Collection  string              `form:"collection,omitempty" json:"collection"`
 	FileName    string              `form:"filename,omitempty" json:"filename"`
 	Path        string              `form:"path,omitempty" json:"path,omitempty"`
+	Text        string              `form:"text,omitempty" json:"text,omitempty"`
+	Final       bool                `form:"final,omitempty" json:"final,omitempty"`
 	Ten         *WorkerUpdateReqTen `form:"ten,omitempty" json:"ten,omitempty"`
 }
 

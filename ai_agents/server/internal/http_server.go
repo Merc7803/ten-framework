@@ -65,6 +65,12 @@ type StopReq struct {
 	ChannelName string `json:"channel_name,omitempty"`
 }
 
+type TextReq struct {
+	RequestId   string `json:"request_id,omitempty"`
+	ChannelName string `json:"channel_name,omitempty"`
+	Text        string `json:"text,omitempty"`
+}
+
 type GenerateTokenReq struct {
 	RequestId   string `json:"request_id,omitempty"`
 	ChannelName string `json:"channel_name,omitempty"`
@@ -113,12 +119,12 @@ func (s *HttpServer) handlerList(c *gin.Context) {
 
 func (s *HttpServer) handleGraphs(c *gin.Context) {
 	// read the property.json file and get the graph list from predefined_graphs, return the result as response
-    // for every graph object returned, only keep the name and auto_start fields
-    // Read property.json from tenapp_dir
-    propertyJsonPath := filepath.Join(s.config.TenappDir, "property.json")
-    content, err := os.ReadFile(propertyJsonPath)
+	// for every graph object returned, only keep the name and auto_start fields
+	// Read property.json from tenapp_dir
+	propertyJsonPath := filepath.Join(s.config.TenappDir, "property.json")
+	content, err := os.ReadFile(propertyJsonPath)
 	if err != nil {
-        slog.Error("failed to read property.json file", "err", err, "path", propertyJsonPath, logTag)
+		slog.Error("failed to read property.json file", "err", err, "path", propertyJsonPath, logTag)
 		s.output(c, codeErrReadFileFailed, http.StatusInternalServerError)
 		return
 	}
@@ -231,6 +237,58 @@ func (s *HttpServer) handlerPing(c *gin.Context) {
 
 	slog.Info("handlerPing end", "worker", worker, "requestId", req.RequestId, logTag)
 	s.output(c, codeSuccess, nil)
+}
+
+func buildTextWorkerUpdateReq(req TextReq) *WorkerUpdateReq {
+	return &WorkerUpdateReq{
+		RequestId:   req.RequestId,
+		ChannelName: req.ChannelName,
+		Text:        strings.TrimSpace(req.Text),
+		Final:       true,
+		Ten: &WorkerUpdateReqTen{
+			Name: "asr_result",
+			Type: "data",
+		},
+	}
+}
+
+func (s *HttpServer) handlerText(c *gin.Context) {
+	var req TextReq
+
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		slog.Error("handlerText params invalid", "err", err, logTag)
+		s.output(c, codeErrParamsInvalid, http.StatusBadRequest)
+		return
+	}
+
+	req.ChannelName = strings.TrimSpace(req.ChannelName)
+	req.Text = strings.TrimSpace(req.Text)
+
+	if req.ChannelName == "" {
+		slog.Error("handlerText channel empty", "channelName", req.ChannelName, "requestId", req.RequestId, logTag)
+		s.output(c, codeErrChannelEmpty, http.StatusBadRequest)
+		return
+	}
+	if req.Text == "" {
+		slog.Error("handlerText text empty", "channelName", req.ChannelName, "requestId", req.RequestId, logTag)
+		s.output(c, codeErrParamsInvalid, http.StatusBadRequest)
+		return
+	}
+	if !workers.Contains(req.ChannelName) {
+		slog.Error("handlerText channel not existed", "channelName", req.ChannelName, "requestId", req.RequestId, logTag)
+		s.output(c, codeErrChannelNotExisted, http.StatusBadRequest)
+		return
+	}
+
+	worker := workers.Get(req.ChannelName).(*Worker)
+	worker.UpdateTs = time.Now().Unix()
+	if err := worker.update(buildTextWorkerUpdateReq(req)); err != nil {
+		slog.Error("handlerText update worker failed", "err", err, "channelName", req.ChannelName, "requestId", req.RequestId, logTag)
+		s.output(c, codeErrUpdateWorkerFailed, http.StatusBadRequest)
+		return
+	}
+
+	s.output(c, codeSuccess, map[string]any{"channel_name": req.ChannelName})
 }
 
 func (s *HttpServer) handlerStart(c *gin.Context) {
@@ -887,6 +945,7 @@ func (s *HttpServer) Start() {
 	r.POST("/start", s.handlerStart)
 	r.POST("/stop", s.handlerStop)
 	r.POST("/ping", s.handlerPing)
+	r.POST("/text", s.handlerText)
 	r.GET("/graphs", s.handleGraphs)
 	r.GET("/dev-tmp/addons/default-properties", s.handleAddonDefaultProperties)
 	r.POST("/token/generate", s.handlerGenerateToken)
@@ -913,9 +972,9 @@ func sanitizeChannelName(channelName string) (string, error) {
 
 	// Check for path traversal characters
 	if strings.Contains(channelName, "..") ||
-	   strings.Contains(channelName, "/") ||
-	   strings.Contains(channelName, "\\") ||
-	   strings.Contains(channelName, "\x00") {
+		strings.Contains(channelName, "/") ||
+		strings.Contains(channelName, "\\") ||
+		strings.Contains(channelName, "\x00") {
 		return "", fmt.Errorf("channel name contains invalid characters")
 	}
 
