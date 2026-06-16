@@ -1081,8 +1081,8 @@ export default function Home() {
   );
   const [remoteAudioTrack, setRemoteAudioTrack] = useState<any>(null);
   const [agoraService, setAgoraService] = useState<any>(null);
-  const [pingInterval, setPingInterval] = useState<NodeJS.Timeout | null>(null);
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const live2dRef = useRef<Live2DHandle | null>(null);
   const [_modelLoadedTick, setModelLoadedTick] = useState(0);
   const processedVoiceCommandIdsRef = useRef<string[]>([]);
@@ -1120,13 +1120,13 @@ export default function Home() {
     }
   }, []);
 
-  const handleConnectionChange = (status: any) => {
+  const handleConnectionChange = useCallback((status: any) => {
     setIsConnected(status.rtc === "connected");
-  };
+  }, []);
 
-  const handleAudioTrackChange = (track: any) => {
+  const handleAudioTrackChange = useCallback((track: any) => {
     setRemoteAudioTrack(track);
-  };
+  }, []);
 
   const handleModelSelect = (modelId: string) => {
     const candidate = characterOptions.find((model) => model.id === modelId);
@@ -1510,22 +1510,24 @@ export default function Home() {
     return cleanup;
   }, [agoraService, selectedModel.id, applyVoiceRule]);
 
-  const startPing = () => {
-    if (pingInterval) {
-      stopPing();
+  const stopPing = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
     }
-    const interval = setInterval(() => {
-      apiPing("test-channel");
-    }, 3000);
-    setPingInterval(interval);
-  };
+  }, []);
 
-  const stopPing = () => {
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      setPingInterval(null);
-    }
-  };
+  const startPing = useCallback(
+    (channel: string) => {
+      stopPing();
+      pingIntervalRef.current = setInterval(() => {
+        void apiPing(channel).catch((error) => {
+          console.error("Failed to ping agent:", error);
+        });
+      }, 3000);
+    },
+    [stopPing]
+  );
 
   useEffect(() => {
     // Dynamically import Agora service only on client side
@@ -1540,11 +1542,13 @@ export default function Home() {
       });
     }
 
-    // Cleanup ping interval on unmount
+  }, [handleAudioTrackChange, handleConnectionChange]);
+
+  useEffect(() => {
     return () => {
       stopPing();
     };
-  }, [handleAudioTrackChange, handleConnectionChange, stopPing]);
+  }, [stopPing]);
 
   const handleMicToggle = () => {
     if (agoraService) {
@@ -1643,7 +1647,7 @@ export default function Home() {
               console.error("Failed to start agent:", error);
             }
 
-            startPing();
+            startPing(agoraConfig.channel);
           } else {
             throw new Error("Failed to connect to Agora");
           }

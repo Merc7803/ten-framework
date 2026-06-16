@@ -86,6 +86,57 @@ interface Live2DCharacterProps {
   onModelError?: (error: Error) => void;
 }
 
+type PixiWebGLContext = WebGLRenderingContext | WebGL2RenderingContext;
+
+function createPixiWebGLContext(canvas: HTMLCanvasElement) {
+  const attributes: WebGLContextAttributes = {
+    alpha: true,
+    antialias: false,
+    premultipliedAlpha: true,
+    preserveDrawingBuffer: false,
+    powerPreference: "high-performance",
+    stencil: true,
+  };
+
+  const context =
+    canvas.getContext("webgl2", attributes) ||
+    canvas.getContext("webgl", attributes) ||
+    (canvas.getContext(
+      "experimental-webgl",
+      attributes
+    ) as WebGLRenderingContext | null);
+
+  if (!context) {
+    throw new Error("WebGL is not available for Live2D rendering");
+  }
+
+  const maxTextureUnits =
+    context.getParameter(context.MAX_TEXTURE_IMAGE_UNITS) || 1;
+
+  console.log("[Live2DCharacter] WebGL context capabilities:", {
+    renderer: context.getParameter(context.RENDERER),
+    vendor: context.getParameter(context.VENDOR),
+    maxTextureUnits,
+    spriteMaxTextures: PIXI.settings.SPRITE_MAX_TEXTURES,
+  });
+
+  if (
+    !PIXI.settings.SPRITE_MAX_TEXTURES ||
+    PIXI.settings.SPRITE_MAX_TEXTURES < 1
+  ) {
+    PIXI.settings.SPRITE_MAX_TEXTURES = Math.max(
+      1,
+      Math.min(maxTextureUnits, 8)
+    );
+    console.warn(
+      "[Live2DCharacter] Corrected invalid PIXI.settings.SPRITE_MAX_TEXTURES:",
+      PIXI.settings.SPRITE_MAX_TEXTURES
+    );
+  }
+
+  return context as PixiWebGLContext;
+}
+
 const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
   function Live2DCharacter(
     {
@@ -103,6 +154,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const motionSyncRef = useRef<MotionSync | null>(null);
     const appRef = useRef<any>(null);
+    const initRunIdRef = useRef(0);
     const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [isClient, setIsClient] = useState(false);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -342,52 +394,53 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
       };
     }, [modelPath, playMotion, setExpression, setRandomExpression]);
 
-    const buildParamConfig = (
-      coreModel: any,
-      parameterId?: string | null
-    ): ParamConfig | undefined => {
-      if (
-        !coreModel ||
-        !parameterId ||
-        typeof coreModel.getParameterIndex !== "function"
-      ) {
-        return undefined;
-      }
-      let index: number;
-      try {
-        index = coreModel.getParameterIndex(parameterId);
-      } catch {
-        return undefined;
-      }
-      if (typeof index !== "number" || index < 0) {
-        return undefined;
-      }
-      const min =
-        typeof coreModel.getParameterMinimumValue === "function"
-          ? coreModel.getParameterMinimumValue(index)
-          : -1;
-      const max =
-        typeof coreModel.getParameterMaximumValue === "function"
-          ? coreModel.getParameterMaximumValue(index)
-          : 1;
-      const defaultValue =
-        typeof coreModel.getParameterDefaultValue === "function"
-          ? coreModel.getParameterDefaultValue(index)
-          : 0;
-      return {
-        id: parameterId,
-        index,
-        min,
-        max,
-        defaultValue,
-      };
-    };
+    const buildParamConfig = useCallback(
+      (coreModel: any, parameterId?: string | null): ParamConfig | undefined => {
+        if (
+          !coreModel ||
+          !parameterId ||
+          typeof coreModel.getParameterIndex !== "function"
+        ) {
+          return undefined;
+        }
+        let index: number;
+        try {
+          index = coreModel.getParameterIndex(parameterId);
+        } catch {
+          return undefined;
+        }
+        if (typeof index !== "number" || index < 0) {
+          return undefined;
+        }
+        const min =
+          typeof coreModel.getParameterMinimumValue === "function"
+            ? coreModel.getParameterMinimumValue(index)
+            : -1;
+        const max =
+          typeof coreModel.getParameterMaximumValue === "function"
+            ? coreModel.getParameterMaximumValue(index)
+            : 1;
+        const defaultValue =
+          typeof coreModel.getParameterDefaultValue === "function"
+            ? coreModel.getParameterDefaultValue(index)
+            : 0;
+        return {
+          id: parameterId,
+          index,
+          min,
+          max,
+          defaultValue,
+        };
+      },
+      []
+    );
 
-    const resolveMouthParameters = (coreModel: any, provided?: MouthConfig) => {
-      if (!coreModel) {
-        mouthParamConfigRef.current = {};
-        return;
-      }
+    const resolveMouthParameters = useCallback(
+      (coreModel: any, provided?: MouthConfig) => {
+        if (!coreModel) {
+          mouthParamConfigRef.current = {};
+          return;
+        }
 
       let parameterIds: string[] = [];
       try {
@@ -484,38 +537,40 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
         down: buildParamConfig(coreModel, downId),
       };
 
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[Live2DCharacter] Resolved mouth params", {
-          openId,
-          formId,
-          upId,
-          downId,
-          config: mouthParamConfigRef.current,
-        });
-      }
-    };
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[Live2DCharacter] Resolved mouth params", {
+            openId,
+            formId,
+            upId,
+            downId,
+            config: mouthParamConfigRef.current,
+          });
+        }
+      },
+      [buildParamConfig]
+    );
 
-    const applyMouthParameter = (
-      config: ParamConfig | undefined,
-      target: number
-    ) => {
-      const coreModel = live2dModelRef.current?.internalModel?.coreModel;
-      if (!config || !coreModel) {
-        return;
-      }
-      const clamped = Math.min(config.max, Math.max(config.min, target));
-      try {
-        coreModel.setParameterValueById(config.id, clamped);
-      } catch (error) {
-        console.warn(
-          "[Live2DCharacter] Failed to set parameter value for",
-          config.id,
-          error
-        );
-      }
-    };
+    const applyMouthParameter = useCallback(
+      (config: ParamConfig | undefined, target: number) => {
+        const coreModel = live2dModelRef.current?.internalModel?.coreModel;
+        if (!config || !coreModel) {
+          return;
+        }
+        const clamped = Math.min(config.max, Math.max(config.min, target));
+        try {
+          coreModel.setParameterValueById(config.id, clamped);
+        } catch (error) {
+          console.warn(
+            "[Live2DCharacter] Failed to set parameter value for",
+            config.id,
+            error
+          );
+        }
+      },
+      []
+    );
 
-    const stopFallbackLipSync = () => {
+    const stopFallbackLipSync = useCallback(() => {
       if (lipSyncAnimationRef.current !== null) {
         cancelAnimationFrame(lipSyncAnimationRef.current);
         lipSyncAnimationRef.current = null;
@@ -534,7 +589,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
       applyMouthParameter(config.form, config.form?.defaultValue ?? 0);
       applyMouthParameter(config.up, config.up?.defaultValue ?? 0);
       applyMouthParameter(config.down, config.down?.defaultValue ?? 0);
-    };
+    }, [applyMouthParameter]);
 
     const ensureAudioContext = async () => {
       if (typeof window === "undefined") return null;
@@ -763,6 +818,11 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
         });
       };
 
+      const runId = ++initRunIdRef.current;
+      let disposed = false;
+      const isCurrentRun = () =>
+        !disposed && initRunIdRef.current === runId;
+
       const initLive2D = async () => {
         try {
           console.log(
@@ -770,9 +830,11 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
             modelPath
           );
           await waitForLive2DCore();
+          if (!isCurrentRun()) return;
 
           // Small delay to prevent rapid re-initialization
           await new Promise((resolve) => setTimeout(resolve, 100));
+          if (!isCurrentRun()) return;
 
           stopFallbackLipSync();
 
@@ -813,34 +875,25 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
             appRef.current = null;
           }
 
-          // Ensure canvas is clean and ready
-          if (canvasRef.current) {
-            const canvas = canvasRef.current;
-            const ctx =
-              canvas.getContext("webgl2") ||
-              canvas.getContext("webgl") ||
-              canvas.getContext("2d");
-            if (ctx) {
-              // Clear any existing context
-              if ("clear" in ctx) {
-                ctx.clear(ctx.COLOR_BUFFER_BIT || 0x00004000);
-              }
-            }
+          if (!canvasRef.current) {
+            throw new Error("Live2D canvas is not available");
           }
 
-          // Create new PIXI application with Canvas renderer to avoid WebGL shader issues
+          const webglContext = createPixiWebGLContext(canvasRef.current);
+
+          // Create new PIXI application with WebGL renderer
           console.log(
-            "[Live2DCharacter] Creating PIXI Application with Canvas renderer..."
+            "[Live2DCharacter] Creating PIXI Application with WebGL renderer..."
           );
           const app = new PIXI.Application({
             view: canvasRef.current!,
+            context: webglContext as any,
             autoStart: true,
             resizeTo: canvasRef.current?.parentElement || window,
             backgroundColor: 0x000000,
             backgroundAlpha: 0,
-            forceCanvas: true, // Force Canvas renderer to avoid WebGL shader issues
             antialias: false, // Disable antialiasing to reduce GPU usage
-            powerPreference: "low-power", // Use integrated GPU to avoid crashes
+            powerPreference: "high-performance",
           });
           console.log(
             "[Live2DCharacter] PIXI Application created successfully:",
@@ -851,6 +904,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
 
           // Wait a moment for PIXI application to fully initialize
           await new Promise((resolve) => setTimeout(resolve, 100));
+          if (!isCurrentRun()) return;
 
           // Validate PIXI application is properly initialized
           console.log("[Live2DCharacter] Validating PIXI Application...");
@@ -867,10 +921,12 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
           const { Live2DModel } = await import("@/lib/live2d-loader").then(
             (loader) => loader.loadLive2DModel()
           );
+          if (!isCurrentRun()) return;
           let model: any;
 
           console.log("[Live2DCharacter] Loading model from:", modelPath);
           model = await Live2DModel.from(modelPath);
+          if (!isCurrentRun()) return;
 
           // Validate model is loaded before adding to stage
           if (!model) {
@@ -904,9 +960,11 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
 
               // Check if MotionSync file exists by making a HEAD request
               const response = await fetch(motionSyncUrl, { method: "HEAD" });
+              if (!isCurrentRun()) return;
               if (response.ok) {
                 // Wait a bit for the model to be fully initialized
                 await new Promise((resolve) => setTimeout(resolve, 1000));
+                if (!isCurrentRun()) return;
 
                 // Validate that the model and internalModel are properly initialized
                 if (model?.internalModel?.coreModel) {
@@ -919,6 +977,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
                     "[Live2DCharacter] Loading MotionSync from URL..."
                   );
                   await motionSync.loadMotionSyncFromUrl(motionSyncUrl);
+                  if (!isCurrentRun()) return;
 
                   motionSyncRef.current = motionSync;
                   console.log(
@@ -955,6 +1014,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
           onModelLoaded?.();
           console.log("Live2D Model is ready.");
         } catch (error) {
+          if (!isCurrentRun()) return;
           console.error("Failed to initialize Live2D:", error);
           onModelError?.(error as Error);
         }
@@ -964,6 +1024,10 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
 
       // Cleanup function
       return () => {
+        disposed = true;
+        if (initRunIdRef.current === runId) {
+          initRunIdRef.current += 1;
+        }
         console.log("[Live2DCharacter] Cleaning up Live2D resources");
         if (appRef.current) {
           appRef.current.destroy(false, true);
