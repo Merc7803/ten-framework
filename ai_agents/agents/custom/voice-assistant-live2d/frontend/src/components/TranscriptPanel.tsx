@@ -166,19 +166,25 @@ export default function TranscriptPanel({
   };
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <Card
+      className={["flex h-full min-h-0 flex-col overflow-hidden", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <CardHeader className="shrink-0 p-3 pb-2">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageSquare className="h-4 w-4" />
               Live Transcript
             </CardTitle>
-            <CardDescription>Real-time conversation transcript</CardDescription>
+            <CardDescription className="text-xs">
+              Real-time conversation transcript
+            </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Label htmlFor="transcript-enabled" className="text-sm">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="transcript-enabled" className="text-xs">
               Enable
             </Label>
             <Switch
@@ -190,11 +196,11 @@ export default function TranscriptPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-2">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-3 pt-0">
         {/* Controls */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="auto-scroll" className="text-sm">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="auto-scroll" className="text-xs">
               Auto-scroll
             </Label>
             <Switch
@@ -204,14 +210,14 @@ export default function TranscriptPanel({
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Button
               onClick={exportTranscript}
               variant="outline"
               size="sm"
               disabled={messages.length === 0}
             >
-              <Download className="mr-1 h-4 w-4" />
+              <Download className="mr-1 h-3.5 w-3.5" />
               Export
             </Button>
 
@@ -221,20 +227,20 @@ export default function TranscriptPanel({
               size="sm"
               disabled={messages.length === 0}
             >
-              <Trash2 className="mr-1 h-4 w-4" />
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
               Clear
             </Button>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="h-48 space-y-2 overflow-y-auto rounded-lg border bg-muted/20 p-2">
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <MessageSquare className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p>No messages yet</p>
-                <p className="text-sm">
+                <MessageSquare className="mx-auto mb-2 h-6 w-6 opacity-50" />
+                <p className="text-sm">No messages yet</p>
+                <p className="text-xs">
                   Start a conversation to see the transcript
                 </p>
               </div>
@@ -243,7 +249,7 @@ export default function TranscriptPanel({
             messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 rounded-lg p-3 ${
+                className={`flex gap-2 rounded-md p-2.5 ${
                   message.isUser
                     ? "border-primary border-l-4 bg-primary/10"
                     : "border-secondary border-l-4 bg-secondary/50"
@@ -251,15 +257,15 @@ export default function TranscriptPanel({
               >
                 <div className="flex-shrink-0">
                   {message.isUser ? (
-                    <User className="h-5 w-5 text-primary" />
+                    <User className="h-4 w-4 text-primary" />
                   ) : (
-                    <Bot className="h-5 w-5 text-secondary-foreground" />
+                    <Bot className="h-4 w-4 text-secondary-foreground" />
                   )}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="font-medium text-sm">
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="font-medium text-xs">
                       {message.isUser ? "You" : "Assistant"}
                     </span>
                     <div className="flex items-center gap-1 text-muted-foreground text-xs">
@@ -275,7 +281,9 @@ export default function TranscriptPanel({
                     )}
                   </div>
 
-                  <p className="break-words text-sm">{message.text}</p>
+                  <p className="break-words text-xs leading-relaxed">
+                    {message.text}
+                  </p>
                 </div>
               </div>
             ))
@@ -292,7 +300,7 @@ export default function TranscriptPanel({
           </div>
         )}
 
-        <form className="space-y-2" onSubmit={handleChatSubmit}>
+        <form className="shrink-0 space-y-2" onSubmit={handleChatSubmit}>
           <textarea
             value={chatText}
             onChange={(event) => setChatText(event.target.value)}
@@ -303,22 +311,22 @@ export default function TranscriptPanel({
               }
             }}
             disabled={!isConnected || isSending}
-            rows={3}
-            className="min-h-20 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            rows={2}
+            className="min-h-16 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             placeholder={
               isConnected
                 ? "Type a message to the avatar"
                 : "Connect to start chatting"
             }
           />
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <p className="min-h-4 text-red-600 text-xs">{chatError}</p>
             <Button
               type="submit"
               size="sm"
               disabled={!isChatSubmittable(chatText, isConnected) || isSending}
             >
-              <Send className="mr-1 h-4 w-4" />
+              <Send className="mr-1 h-3.5 w-3.5" />
               Send
             </Button>
           </div>

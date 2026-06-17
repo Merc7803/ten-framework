@@ -1666,7 +1666,7 @@ export default function Home() {
   };
 
   const renderCharacterSwitch = () => (
-    <div className="flex w-full max-w-md flex-wrap items-center justify-center gap-3 rounded-full bg-white/60 p-2 shadow-sm backdrop-blur">
+    <div className="flex w-full max-w-sm flex-wrap items-center justify-center gap-2 rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur">
       {characterOptions.map((model) => {
         const isActive = model.id === selectedModel.id;
         return (
@@ -1674,7 +1674,7 @@ export default function Home() {
             key={model.id}
             type="button"
             onClick={() => handleModelSelect(model.id)}
-            className={`rounded-full px-5 py-2 font-semibold text-sm transition ${
+            className={`rounded-full px-3.5 py-1.5 font-semibold text-xs transition ${
               isActive
                 ? "bg-[#2f3dbd] text-white"
                 : "bg-white/85 text-[#586094] hover:bg-white"
@@ -1698,8 +1698,8 @@ export default function Home() {
         : "rgba(210, 180, 255, 0.35)";
   const isImmersiveStage = Boolean(selectedModel.immersiveStage);
   const stageWrapperClass = isImmersiveStage
-    ? "relative w-full max-w-5xl"
-    : "relative w-full max-w-3xl";
+    ? "relative w-full max-w-4xl"
+    : "relative w-full max-w-2xl";
   const stageGlowClass = isImmersiveStage
     ? "-inset-20 absolute -z-10 rounded-[140px] blur-3xl pointer-events-none"
     : "-inset-5 absolute -z-10 rounded-[40px] bg-gradient-to-br from-[#ffe1f1]/60 via-[#d8ecff]/60 to-[#fff6d9]/60 blur-3xl pointer-events-none";
@@ -1717,8 +1717,8 @@ export default function Home() {
         }
     : undefined;
   const stageInnerClass = isImmersiveStage
-    ? "relative z-10 flex flex-col items-center gap-6 px-2 pt-4 pb-8 md:px-6 md:pt-6 md:pb-12"
-    : "relative z-10 overflow-hidden rounded-[32px] border border-white/80 bg-white/80 px-5 pt-6 pb-8 shadow-[0_24px_60px_rgba(200,208,255,0.35)] backdrop-blur-xl md:px-8";
+    ? "relative z-10 flex flex-col items-center gap-2 px-2 pt-2 pb-3 md:px-4 md:pt-3 md:pb-4"
+    : "relative z-10 overflow-hidden rounded-[22px] border border-white/80 bg-white/80 px-4 pt-3 pb-4 shadow-[0_18px_45px_rgba(200,208,255,0.3)] backdrop-blur-xl md:px-5";
   const stageHeaderClass = isImmersiveStage
     ? selectedModel.id === "kevin"
       ? "flex w-full items-center justify-between font-semibold text-[#2a5b37] text-[0.62rem] uppercase tracking-[0.32em]"
@@ -1732,22 +1732,22 @@ export default function Home() {
       ? "inline-flex h-2.5 w-2.5 rounded-full bg-[#7dd87d]"
       : "inline-flex h-2.5 w-2.5 rounded-full bg-[#ff9bae]";
   const stageCanvasWrapperClass = isImmersiveStage
-    ? "relative mt-2 w-full"
-    : "relative mt-4";
+    ? "relative w-full"
+    : "relative mt-2";
   const live2dClassName = isImmersiveStage
     ? selectedModel.id === "kevin"
-      ? "h-[34rem] w-full md:h-[48rem] drop-shadow-[0_30px_90px_rgba(86,170,108,0.5)]"
-      : "h-[34rem] w-full md:h-[48rem] drop-shadow-[0_30px_90px_rgba(174,130,90,0.48)]"
-    : "h-[26rem] w-full rounded-[28px] border border-white/70 bg-gradient-to-b from-white/60 to-[#f5e7ff]/40 md:h-[34rem]";
+      ? "h-[min(34svh,23rem)] w-full md:h-[min(40svh,27rem)] drop-shadow-[0_24px_70px_rgba(86,170,108,0.45)]"
+      : "h-[min(34svh,23rem)] w-full md:h-[min(40svh,27rem)] drop-shadow-[0_24px_70px_rgba(174,130,90,0.43)]"
+    : "h-[min(30svh,18rem)] w-full rounded-[20px] border border-white/70 bg-gradient-to-b from-white/60 to-[#f5e7ff]/40 md:h-[min(36svh,23rem)]";
   const quoteClass = isImmersiveStage
     ? selectedModel.id === "kevin"
-      ? "mt-6 text-center text-[#2f5538] text-sm md:text-base font-medium"
-      : "mt-6 text-center text-[#5b4635] text-sm md:text-base font-medium"
-    : "mt-4 text-center text-[#6f6a92] text-xs md:text-sm";
+      ? "text-center text-[#2f5538] text-sm font-medium"
+      : "text-center text-[#5b4635] text-sm font-medium"
+    : "mt-2 text-center text-[#6f6a92] text-xs";
 
   return (
     <div
-      className="relative min-h-[100svh] overflow-hidden text-[#2f2d4b]"
+      className="relative h-[100svh] overflow-hidden text-[#2f2d4b]"
       style={{ backgroundColor: backgroundTheme.baseColor }}
     >
       <div className="absolute inset-0">
@@ -1800,25 +1800,25 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center gap-6 px-4 py-6 md:px-6 lg:gap-10">
-        <header className="max-w-xl space-y-3 text-center lg:max-w-2xl">
-          <span className="inline-flex items-center rounded-full bg-white/70 px-3.5 py-0.5 font-semibold text-[#ff79a8] text-[0.65rem] uppercase tracking-[0.25em] shadow-sm">
+      <div className="relative z-10 flex h-[100svh] flex-col items-center justify-start gap-2.5 px-3 py-2 md:px-4 md:py-3 lg:gap-3">
+        <header className="shrink-0 max-w-xl space-y-1.5 text-center lg:max-w-2xl">
+          <span className="inline-flex items-center rounded-full bg-white/70 px-3 py-0.5 font-semibold text-[#ff79a8] text-[0.6rem] uppercase tracking-[0.22em] shadow-sm">
             Say hello to {selectedModel.name}
           </span>
           <h1
-            className={`${headlineFont.className} text-3xl text-[#2f2d4b] leading-snug tracking-tight md:text-[2.75rem] md:leading-tight`}
+            className={`${headlineFont.className} text-xl text-[#2f2d4b] leading-tight tracking-tight md:text-[1.95rem]`}
           >
             {selectedModel.headline}
           </h1>
           <p
-            className={`${subtitleFont.className} text-[#6f6a92] text-sm md:text-base`}
+            className={`${subtitleFont.className} text-[#6f6a92] text-xs md:text-sm`}
           >
             {selectedModel.description}
           </p>
         </header>
 
-        <main className="grid w-full max-w-7xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-          <section className="flex min-w-0 flex-col items-center gap-8">
+        <main className="grid min-h-0 w-full max-w-[78rem] flex-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,29rem)]">
+          <section className="flex min-h-0 min-w-0 flex-col items-center gap-2.5">
             {renderCharacterSwitch()}
 
             <div className={stageWrapperClass}>
@@ -1848,17 +1848,17 @@ export default function Home() {
             </div>
             </div>
 
-            <div className="flex w-full max-w-3xl flex-col items-center gap-4">
-            <div className="flex flex-wrap items-center justify-center gap-2 font-medium text-[0.7rem] md:text-xs">
+            <div className="flex w-full max-w-2xl flex-col items-center gap-2.5">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 font-medium text-[0.65rem] md:text-[0.7rem]">
               <span
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${
                   isConnected
                     ? "bg-[#e6f8ff] text-[#236d94]"
                     : "bg-[#ffe8ef] text-[#b34f6a]"
                 }`}
               >
                 <span
-                  className={`h-2.5 w-2.5 rounded-full ${
+                  className={`h-2 w-2 rounded-full ${
                     isConnected ? "bg-[#38a8d8]" : "bg-[#f0708f]"
                   }`}
                 />
@@ -1868,14 +1868,14 @@ export default function Home() {
                   : "Not connected"}
               </span>
               <span
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${
                   isMuted
                     ? "bg-[#ffe8ef] text-[#b34f6a]"
                     : "bg-[#ecfce1] text-[#2f7d3e]"
                 }`}
               >
                 <span
-                  className={`h-2.5 w-2.5 rounded-full ${
+                  className={`h-2 w-2 rounded-full ${
                     isMuted ? "bg-[#f0708f]" : "bg-[#4cc073]"
                   }`}
                 />
@@ -1883,11 +1883,11 @@ export default function Home() {
               </span>
             </div>
 
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-3">
               <button
                 onClick={handleMicToggle}
                 disabled={!isConnected}
-                className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border text-lg shadow-lg transition-all duration-200 ${
+                className={`relative flex h-11 w-11 items-center justify-center rounded-xl border text-base shadow-md transition-all duration-200 ${
                   !isConnected
                     ? "cursor-not-allowed border-[#e9e7f7] bg-white text-[#b7b4c9] opacity-60"
                     : isMuted
@@ -1897,7 +1897,7 @@ export default function Home() {
               >
                 {isMuted ? (
                   <svg
-                    className="h-6 w-6"
+                    className="h-5 w-5"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -1912,7 +1912,7 @@ export default function Home() {
                   </svg>
                 ) : (
                   <svg
-                    className="h-6 w-6"
+                    className="h-5 w-5"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -1925,7 +1925,7 @@ export default function Home() {
               <button
                 onClick={handleConnectToggle}
                 disabled={isConnecting}
-                className={`relative flex h-14 w-60 items-center justify-center gap-2 rounded-2xl border px-6 text-center font-semibold text-sm leading-tight shadow-lg transition-all duration-200 ${
+                className={`relative flex h-11 w-48 items-center justify-center gap-2 rounded-xl border px-4 text-center font-semibold text-xs leading-tight shadow-md transition-all duration-200 ${
                   isConnecting
                     ? "cursor-progress border-[#cde5ff] bg-[#e7f3ff] text-[#5a6a96]"
                     : isConnected
@@ -1992,7 +1992,7 @@ export default function Home() {
             channel="test-channel"
             httpPort={HTTP_CONTROL_PORT}
             isConnected={isConnected}
-            className="w-full lg:sticky lg:top-6"
+            className="min-h-0 w-full lg:h-full"
           />
         </main>
       </div>

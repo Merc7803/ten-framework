@@ -70,6 +70,48 @@ test("mergeTranscriptMessage replaces streaming updates with the same message id
   assert.deepEqual(messages, [final]);
 });
 
+test("mergeTranscriptMessage dedupes repeated user ASR transcript text in a short window", () => {
+  const interim = {
+    id: "user-text-100-0",
+    text: "Hello.",
+    timestamp: new Date("2026-06-17T02:40:27.000Z"),
+    isUser: true,
+    isFinal: false,
+  };
+  const final = {
+    id: "user-text-100-1",
+    text: "Hello.",
+    timestamp: new Date("2026-06-17T02:40:27.500Z"),
+    isUser: true,
+    isFinal: true,
+  };
+
+  const messages = mergeTranscriptMessage([interim], final);
+
+  assert.deepEqual(messages, [final]);
+});
+
+test("mergeTranscriptMessage keeps intentional repeated user messages outside the dedupe window", () => {
+  const first = {
+    id: "user-text-100-1",
+    text: "Hello.",
+    timestamp: new Date("2026-06-17T02:40:27.000Z"),
+    isUser: true,
+    isFinal: true,
+  };
+  const second = {
+    id: "user-text-100-2",
+    text: "Hello.",
+    timestamp: new Date("2026-06-17T02:40:32.000Z"),
+    isUser: true,
+    isFinal: true,
+  };
+
+  const messages = mergeTranscriptMessage([first], second);
+
+  assert.deepEqual(messages, [first, second]);
+});
+
 test("buildTranscriptMessageId prefers a stable payload message id over the transport chunk id", () => {
   assert.equal(
     buildTranscriptMessageId(

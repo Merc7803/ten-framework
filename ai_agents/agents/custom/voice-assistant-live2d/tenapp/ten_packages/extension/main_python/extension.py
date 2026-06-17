@@ -1,7 +1,6 @@
-import asyncio
 import json
 import time
-from typing import Literal
+from typing import Literal, Optional
 
 from .agent.decorators import agent_event_handler
 from ten_runtime import (
@@ -109,12 +108,19 @@ class MainControlExtension(AsyncExtension):
         stream_id = int(self.session_id)
         if not event.text:
             return
+        transcript_turn_id = self.turn_id + 1
         if event.final or len(event.text) > 2:
             await self._interrupt()
         if event.final:
-            self.turn_id += 1
+            self.turn_id = transcript_turn_id
             await self.agent.queue_llm_input(event.text)
-        await self._send_transcript("user", event.text, event.final, stream_id)
+        await self._send_transcript(
+            "user",
+            event.text,
+            event.final,
+            stream_id,
+            message_turn_id=transcript_turn_id,
+        )
 
     @agent_event_handler(LLMResponseEvent)
     async def _on_llm_response(self, event: LLMResponseEvent):
@@ -160,11 +166,13 @@ class MainControlExtension(AsyncExtension):
         final: bool,
         stream_id: int,
         data_type: Literal["text", "reasoning"] = "text",
+        message_turn_id: Optional[int] = None,
     ):
         """
         Sends the transcript (ASR or LLM output) to the message collector.
         """
-        message_id = f"{role}-{data_type}-{self.session_id}-{self.turn_id}"
+        turn_id = self.turn_id if message_turn_id is None else message_turn_id
+        message_id = f"{role}-{data_type}-{self.session_id}-{turn_id}"
         if data_type == "text":
             await _send_data(
                 self.ten_env,
