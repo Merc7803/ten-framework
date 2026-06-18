@@ -7,7 +7,6 @@
 #
 
 import json
-import aiohttp
 
 from typing import Any
 from dataclasses import dataclass
@@ -23,6 +22,11 @@ from ten_ai_base.types import (
     LLMToolResultLLMResult,
 )
 from ten_ai_base.llm_tool import AsyncLLMToolBaseExtension
+
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
 
 CMD_TOOL_REGISTER = "tool_register"
 CMD_TOOL_CALL = "tool_call"
@@ -100,14 +104,19 @@ class WeatherToolExtension(AsyncLLMToolBaseExtension):
 
     async def on_init(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_debug("on_init")
-        self.session = aiohttp.ClientSession()
+        if aiohttp is not None:
+            self.session = aiohttp.ClientSession()
 
     async def on_start(self, ten_env: AsyncTenEnv) -> None:
         ten_env.log_debug("on_start")
 
         self.config = await WeatherToolConfig.create_async(ten_env=ten_env)
         ten_env.log_info(f"config: {self.config}")
-        if self.config.api_key:
+        if aiohttp is None:
+            ten_env.log_info(
+                "WeatherToolExtension disabled: aiohttp is not installed."
+            )
+        elif self.config.api_key:
             # Key present: register tools as usual.
             await super().on_start(ten_env)
         else:
@@ -186,6 +195,11 @@ class WeatherToolExtension(AsyncLLMToolBaseExtension):
         self, ten_env: AsyncTenEnv, name: str, args: dict
     ) -> LLMToolResult | None:
         ten_env.log_info(f"run_tool name: {name}, args: {args}")
+        if self.session is None:
+            ten_env.log_warn(
+                "WeatherToolExtension run_tool skipped: session unavailable."
+            )
+            return None
         if name == CURRENT_TOOL_NAME:
             result = await self._get_current_weather(args)
             return LLMToolResultLLMResult(

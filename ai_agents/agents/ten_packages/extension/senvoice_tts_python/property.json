@@ -1,0 +1,18 @@
+{
+  "dump": false,
+  "dump_path": "./",
+  "params": {
+    "base_url": "${env:SENVOICE_TTS_URL|https://senvoice-api.vizone.ai/tts-gateway-v2/v1/tts/sync/turbo}",
+    "key": "${env:SENVOICE_TTS_KEY}",
+    "voice": "${env:SENVOICE_TTS_VOICE|S_F03_ThuyDuyen}",
+    "speed": 1,
+    "lang": "vi",
+    "sample_rate": 44100,
+    "normalize": true,
+    "norm_backend": "v2",
+    "preserve_case": true,
+    "use_vinglish": true,
+    "norm_punc": false,
+    "keep_punc": false
+  }
+}
