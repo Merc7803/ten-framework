@@ -1,5 +1,10 @@
+const {
+  DEFAULT_LANGUAGE_MODE,
+  buildLanguageModeStartProperties,
+  getLanguageModeOption,
+} = require("./language-mode.js");
+
 const DEFAULT_DESKTOP_GRAPH_NAME = "voice_assistant_live2d";
-const DEFAULT_DESKTOP_LANGUAGE = "en";
 const DEFAULT_DESKTOP_VOICE_TYPE = /** @type {"male"} */ ("male");
 
 function buildDesktopTokenRequest({ requestId, uid, channel }) {
@@ -27,7 +32,7 @@ function parseDesktopAgoraCredentials(responseData) {
  * @param {string} input.greeting
  * @param {number} input.httpPort
  * @param {string} [input.graphName]
- * @param {string} [input.language]
+ * @param {string} [input.languageMode]
  * @param {"male" | "female"} [input.voiceType]
  * @returns {{
  *   channel: string,
@@ -44,26 +49,22 @@ function buildDesktopAgentStartConfig({
   greeting,
   httpPort,
   graphName = DEFAULT_DESKTOP_GRAPH_NAME,
-  language = DEFAULT_DESKTOP_LANGUAGE,
+  languageMode = DEFAULT_LANGUAGE_MODE,
   voiceType = DEFAULT_DESKTOP_VOICE_TYPE,
 }) {
+  const languageOption = getLanguageModeOption(languageMode);
+
   return {
     channel,
     userId,
     graphName,
-    language,
+    language: languageOption.startLanguage,
     voiceType,
-    properties: {
-      llm: {
-        greeting,
-      },
-      main_control: {
-        greeting,
-      },
-      http_server_python: {
-        listen_port: httpPort,
-      },
-    },
+    properties: buildLanguageModeStartProperties({
+      mode: languageOption.id,
+      agentGreeting: greeting,
+      httpControlPort: httpPort,
+    }),
   };
 }
 

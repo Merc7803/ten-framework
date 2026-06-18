@@ -53,14 +53,26 @@ test("buildDesktopAgentStartConfig starts the Live2D graph with HTTP control ena
       channel: "desktop-channel",
       userId: 123,
       graphName: "voice_assistant_live2d",
-      language: "en",
+      language: "vi",
       voiceType: "male",
       properties: {
+        stt: {
+          params: {
+            language: "vi",
+          },
+        },
         llm: {
           greeting: "Hello from Kevin",
+          prompt:
+            "You are a warm Live2D voice assistant. Always reply in Vietnamese. Use natural, friendly tiếng Việt.",
         },
         main_control: {
           greeting: "Hello from Kevin",
+        },
+        tts: {
+          params: {
+            lang: "vi",
+          },
         },
         http_server_python: {
           listen_port: 8070,

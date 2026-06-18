@@ -6,6 +6,7 @@ const {
   buildLanguageModeStartProperties,
   getLanguageModeOption,
 } = require("../src/lib/language-mode.js");
+const { buildDesktopAgentStartConfig } = require("../src/lib/desktop-session.js");
 
 test("defaults the Live2D app to Vietnamese mode", () => {
   assert.equal(DEFAULT_LANGUAGE_MODE, "vi");
@@ -50,4 +51,34 @@ test("buildLanguageModeStartProperties configures bilingual mode with mixed inpu
   assert.match(properties.llm.prompt, /same language/i);
   assert.match(properties.llm.prompt, /mixed/i);
   assert.match(properties.llm.prompt, /Vietnamese/);
+});
+
+test("desktop agent start config defaults to Vietnamese mode", () => {
+  const config = buildDesktopAgentStartConfig({
+    channel: "desktop-channel",
+    userId: 123,
+    greeting: "Xin chao Kevin",
+    httpPort: 8070,
+  });
+
+  assert.equal(config.language, "vi");
+  assert.equal(config.properties.stt.params.language, "vi");
+  assert.equal(config.properties.tts.params.lang, "vi");
+  assert.equal(config.properties.llm.greeting, "Xin chao Kevin");
+  assert.match(config.properties.llm.prompt, /Vietnamese/);
+});
+
+test("desktop agent start config applies selected bilingual mode", () => {
+  const config = buildDesktopAgentStartConfig({
+    channel: "desktop-channel",
+    userId: 123,
+    greeting: "Xin chao Kevin",
+    httpPort: 8070,
+    languageMode: "bilingual",
+  });
+
+  assert.equal(config.language, "bilingual");
+  assert.equal(config.properties.stt.params.language, "multi");
+  assert.equal(config.properties.tts.params.lang, "vi");
+  assert.match(config.properties.llm.prompt, /mixed/i);
 });

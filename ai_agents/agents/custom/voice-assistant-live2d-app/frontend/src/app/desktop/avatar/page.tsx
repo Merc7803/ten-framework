@@ -11,6 +11,10 @@ import {
   buildDesktopTokenRequest,
   parseDesktopAgoraCredentials,
 } from "@/lib/desktop-session";
+import {
+  DEFAULT_LANGUAGE_MODE,
+  getLanguageModeGreeting,
+} from "@/lib/language-mode";
 import { publishDesktopTranscriptMessage } from "@/lib/desktop-transcript";
 import { resolveLive2DModelsBaseUrl } from "@/lib/live2d-assets";
 import { apiPing, apiStartService, apiStopService } from "@/lib/request";
@@ -18,6 +22,7 @@ import type { AgoraConfig, TranscriptMessage } from "@/types";
 
 const DESKTOP_CHANNEL = "desktop-channel";
 const HTTP_CONTROL_PORT = 8070;
+const DESKTOP_LANGUAGE_CHANNEL = "desktop-language-mode";
 
 function publishDesktopSessionState(state: {
   connected: boolean;
@@ -57,6 +62,7 @@ export default function DesktopAvatarPage() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [languageMode, setLanguageMode] = useState(DEFAULT_LANGUAGE_MODE);
   const [isDragging, setIsDragging] = useState(false);
   const [backendStatus, setBackendStatus] = useState("Waiting for backend");
   const [agoraService, setAgoraService] = useState<any>(null);
@@ -83,6 +89,21 @@ export default function DesktopAvatarPage() {
     window.electronDesktop?.setMenuState({ connected, muted });
     publishDesktopSessionState({ connected, muted, backendStatus });
   }, [backendStatus, connected, muted]);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") {
+      return;
+    }
+
+    const channel = new BroadcastChannel(DESKTOP_LANGUAGE_CHANNEL);
+    channel.onmessage = (event) => {
+      if (typeof event.data?.mode === "string") {
+        setLanguageMode(event.data.mode);
+      }
+    };
+
+    return () => channel.close();
+  }, []);
 
   const stopPing = useCallback(() => {
     if (pingIntervalRef.current) {
@@ -192,8 +213,13 @@ export default function DesktopAvatarPage() {
         buildDesktopAgentStartConfig({
           channel: agoraConfig.channel,
           userId: agoraConfig.uid || uid,
-          greeting: character.agentGreeting,
+          greeting: getLanguageModeGreeting(
+            languageMode,
+            character.name,
+            character.agentGreeting
+          ),
           httpPort: HTTP_CONTROL_PORT,
+          languageMode,
         })
       );
 
@@ -209,7 +235,14 @@ export default function DesktopAvatarPage() {
     } finally {
       setConnecting(false);
     }
-  }, [agoraService, character.agentGreeting, connecting, startPing]);
+  }, [
+    agoraService,
+    character.agentGreeting,
+    character.name,
+    connecting,
+    languageMode,
+    startPing,
+  ]);
 
   useEffect(() => {
     const unsubscribe = window.electronDesktop?.onMenuAction(async (action) => {

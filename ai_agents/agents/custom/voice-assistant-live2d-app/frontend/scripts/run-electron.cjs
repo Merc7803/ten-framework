@@ -23,10 +23,16 @@ function buildElectronLaunch({
   };
 }
 
+function buildElectronRuntimeEnv(env = process.env) {
+  const nextEnv = { ...env };
+  delete nextEnv.ELECTRON_RUN_AS_NODE;
+  return nextEnv;
+}
+
 function run() {
   const launch = buildElectronLaunch();
   const child = spawn(launch.command, launch.args, {
-    env: process.env,
+    env: buildElectronRuntimeEnv(),
     stdio: "inherit",
     windowsHide: false,
   });
@@ -47,5 +53,6 @@ if (require.main === module) {
 
 module.exports = {
   buildElectronLaunch,
+  buildElectronRuntimeEnv,
   resolveElectronExecutable,
 };
