@@ -10,3 +10,4 @@ dist/
 .env.*.local
 
 !public/lib
+public/models/
