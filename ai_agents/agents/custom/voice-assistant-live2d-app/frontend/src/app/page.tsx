@@ -15,6 +15,13 @@ import type {
   MouthConfig,
 } from "@/components/Live2DCharacter";
 import TranscriptPanel from "@/components/TranscriptPanel";
+import {
+  DEFAULT_LANGUAGE_MODE,
+  LANGUAGE_MODE_OPTIONS,
+  buildLanguageModeStartProperties,
+  getLanguageModeGreeting,
+  getLanguageModeOption,
+} from "@/lib/language-mode";
 
 // Dynamically import Live2D component to prevent SSR issues
 const ClientOnlyLive2D = dynamicImport(
@@ -1076,6 +1083,7 @@ export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [languageMode, setLanguageMode] = useState(DEFAULT_LANGUAGE_MODE);
   const [selectedModel, setSelectedModel] = useState<CharacterProfile>(
     characterOptions[0]
   );
@@ -1626,23 +1634,23 @@ export default function Home() {
 
             // Start the agent service
             try {
+              const agentGreeting = getLanguageModeGreeting(
+                languageMode,
+                selectedModel.name,
+                selectedModel.agentGreeting
+              );
+              const languageOption = getLanguageModeOption(languageMode);
               const startResult = await apiStartService({
                 channel: agoraConfig.channel,
                 userId: agoraConfig.uid || 0,
                 graphName: "voice_assistant_live2d",
-                language: "en",
+                language: languageOption?.startLanguage ?? DEFAULT_LANGUAGE_MODE,
                 voiceType: selectedModel.voiceType,
-                properties: {
-                  llm: {
-                    greeting: selectedModel.agentGreeting,
-                  },
-                  main_control: {
-                    greeting: selectedModel.agentGreeting,
-                  },
-                  http_server_python: {
-                    listen_port: HTTP_CONTROL_PORT,
-                  },
-                },
+                properties: buildLanguageModeStartProperties({
+                  mode: languageMode,
+                  agentGreeting,
+                  httpControlPort: HTTP_CONTROL_PORT,
+                }),
               });
 
               console.log("Agent started:", startResult);
@@ -1679,6 +1687,33 @@ export default function Home() {
             }`}
           >
             {model.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderLanguageModeSwitch = () => (
+    <div className="flex w-full max-w-sm flex-wrap items-center justify-center gap-1.5 rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur">
+      {LANGUAGE_MODE_OPTIONS.map((option) => {
+        const isActive = option.id === languageMode;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => setLanguageMode(option.id)}
+            disabled={isConnected || isConnecting}
+            className={`rounded-full px-3 py-1.5 font-semibold text-xs transition ${
+              isActive
+                ? "bg-[#2f7d3e] text-white"
+                : "bg-white/85 text-[#586094] hover:bg-white"
+            } ${
+              isConnected || isConnecting
+                ? "cursor-not-allowed opacity-60"
+                : ""
+            }`}
+          >
+            {option.label}
           </button>
         );
       })}
@@ -1818,6 +1853,7 @@ export default function Home() {
         <main className="grid min-h-0 w-full max-w-[78rem] flex-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,29rem)]">
           <section className="flex min-h-0 min-w-0 flex-col items-center gap-2.5">
             {renderCharacterSwitch()}
+            {renderLanguageModeSwitch()}
 
             <div className={stageWrapperClass}>
             <div className={stageGlowClass} style={stageGlowStyle} />

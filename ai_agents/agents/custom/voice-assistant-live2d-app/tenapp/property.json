@@ -31,7 +31,7 @@
               "property": {
                 "params": {
                   "api_key": "${env:DEEPGRAM_API_KEY}",
-                  "language": "en-US",
+                  "language": "vi",
                   "model": "nova-3"
                 }
               }
@@ -47,9 +47,9 @@
                 "frequency_penalty": 0.9,
                 "model": "${env:OPENAI_MODEL}",
                 "max_completion_tokens": 512,
-                "prompt": "",
+                "prompt": "You are a warm Live2D voice assistant. Always reply in Vietnamese. Use natural, friendly tiếng Việt.",
                 "proxy_url": "${env:OPENAI_PROXY_URL|}",
-                "greeting": "Hello there, nice to meet you! I’m your anime assistant—what’s your name?",
+                "greeting": "Xin chào, mình là Kevin the Marmot. Mình có thể giúp gì cho bạn hôm nay?",
                 "max_memory_length": 10
               }
             },
@@ -75,7 +75,7 @@
               "addon": "main_python",
               "extension_group": "control",
               "property": {
-                "greeting": "Hello there, nice to meet you! I’m your anime assistant—what’s your name?"
+                "greeting": "Xin chào, mình là Kevin the Marmot. Mình có thể giúp gì cho bạn hôm nay?"
               }
             },
             {

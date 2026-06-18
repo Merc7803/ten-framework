@@ -88,8 +88,8 @@ function mergeTranscriptMessage(messages, message) {
 
 async function sendTextMessage({ post, requestId, channel, httpPort = 8070, text }) {
   const response = await post(
-    "/api/agents/text",
-    buildTextMessageRequest({ requestId, channel, text })
+    `/proxy/${httpPort}/cmd`,
+    buildHttpControlMessageRequest({ requestId, channel, text })
   );
   return response.data || {};
 }
