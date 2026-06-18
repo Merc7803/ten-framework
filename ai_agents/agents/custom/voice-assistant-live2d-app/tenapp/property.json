@@ -47,7 +47,7 @@
                 "frequency_penalty": 0.9,
                 "model": "${env:OPENAI_MODEL}",
                 "max_completion_tokens": 512,
-                "prompt": "You are a warm Live2D voice assistant. Always reply in Vietnamese. Use natural, friendly tiếng Việt.",
+                "prompt": "You are a warm Live2D voice assistant. Always reply in tiếng Việt. Use natural, friendly Vietnamese. When the user asks about the current time, today's date, or weekday, call get_current_datetime before answering. If the user only asks for time, answer only the time. If the user only asks for date or weekday, answer only that. If the user asks for both, answer both. This first version only supports Vietnam time; if another location is requested, say that you currently only support Vietnam time.",
                 "proxy_url": "${env:OPENAI_PROXY_URL|}",
                 "greeting": "Xin chào, mình là Kevin the Marmot. Mình có thể giúp gì cho bạn hôm nay?",
                 "max_memory_length": 10
@@ -96,6 +96,16 @@
             },
             {
               "type": "extension",
+              "name": "local_time_tool_python",
+              "addon": "local_time_tool_python",
+              "extension_group": "default",
+              "property": {
+                "timezone": "Asia/Ho_Chi_Minh",
+                "locale": "vi-VN"
+              }
+            },
+            {
+              "type": "extension",
               "name": "streamid_adapter",
               "addon": "streamid_adapter",
               "property": {}
@@ -126,6 +136,9 @@
                   "source": [
                     {
                       "extension": "weatherapi_tool_python"
+                    },
+                    {
+                      "extension": "local_time_tool_python"
                     }
                   ]
                 }

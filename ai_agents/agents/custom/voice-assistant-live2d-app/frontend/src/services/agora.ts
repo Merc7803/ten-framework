@@ -77,9 +77,6 @@ export class AgoraService {
         await this.rtcClient?.subscribe(user, mediaType);
         this.remoteAudioTrack = user.audioTrack as IRemoteAudioTrack;
 
-        // Play the remote audio track
-        this.remoteAudioTrack.play();
-
         this.onRemoteAudioTrack?.(this.remoteAudioTrack);
       }
     });

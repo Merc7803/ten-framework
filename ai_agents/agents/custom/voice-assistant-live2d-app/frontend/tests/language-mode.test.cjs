@@ -12,7 +12,7 @@ test("defaults the Live2D app to Vietnamese mode", () => {
   assert.equal(getLanguageModeOption(undefined).id, "vi");
 });
 
-test("buildLanguageModeStartProperties configures Vietnamese speech by default", () => {
+test("buildLanguageModeStartProperties configures Vietnamese conversation with Vietnamese STT", () => {
   const properties = buildLanguageModeStartProperties({
     mode: "vi",
     agentGreeting: "Xin chao Kevin",

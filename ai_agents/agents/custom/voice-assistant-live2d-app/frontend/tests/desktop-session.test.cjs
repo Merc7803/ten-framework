@@ -41,31 +41,36 @@ test("parseDesktopAgoraCredentials supports wrapped agent server responses", () 
   );
 });
 
-test("buildDesktopAgentStartConfig starts the Live2D graph with HTTP control enabled", () => {
-  assert.deepEqual(
-    buildDesktopAgentStartConfig({
-      channel: "desktop-channel",
-      userId: 123,
-      greeting: "Hello from Kevin",
-      httpPort: 8070,
-    }),
-    {
-      channel: "desktop-channel",
-      userId: 123,
-      graphName: "voice_assistant_live2d",
-      language: "en",
-      voiceType: "male",
-      properties: {
-        llm: {
-          greeting: "Hello from Kevin",
-        },
-        main_control: {
-          greeting: "Hello from Kevin",
-        },
-        http_server_python: {
-          listen_port: 8070,
-        },
-      },
-    }
-  );
+test("buildDesktopAgentStartConfig starts the Live2D graph with Vietnamese conversation defaults", () => {
+  const config = buildDesktopAgentStartConfig({
+    channel: "desktop-channel",
+    userId: 123,
+    greeting: "Xin chao Kevin",
+    httpPort: 8070,
+  });
+
+  assert.equal(config.channel, "desktop-channel");
+  assert.equal(config.userId, 123);
+  assert.equal(config.graphName, "voice_assistant_live2d");
+  assert.equal(config.language, "vi");
+  assert.equal(config.voiceType, "male");
+  assert.equal(config.properties.stt.params.language, "vi");
+  assert.equal(config.properties.tts.params.lang, "vi");
+  assert.equal(config.properties.llm.greeting, "Xin chao Kevin");
+  assert.equal(config.properties.main_control.greeting, "Xin chao Kevin");
+  assert.equal(config.properties.http_server_python.listen_port, 8070);
+});
+
+test("buildDesktopAgentStartConfig can start English-only mode", () => {
+  const config = buildDesktopAgentStartConfig({
+    channel: "desktop-channel",
+    userId: 123,
+    greeting: "Hello Kevin",
+    httpPort: 8070,
+    languageMode: "en",
+  });
+
+  assert.equal(config.language, "en");
+  assert.equal(config.properties.stt.params.language, "en-US");
+  assert.equal(config.properties.tts.params.lang, "en");
 });

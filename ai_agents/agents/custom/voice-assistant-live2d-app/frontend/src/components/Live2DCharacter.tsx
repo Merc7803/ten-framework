@@ -1056,6 +1056,35 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
       // Ensure model is loaded (MotionSync is optional)
       if (!isModelLoaded) return;
 
+      const playHiddenAudio = (stream: MediaStream) => {
+        try {
+          if (!audioElementRef.current) {
+            const audio = document.createElement("audio");
+            audio.autoplay = true;
+            // playsInline needed in iOS/Safari to avoid fullscreen
+            (audio as any).playsInline = true;
+            audio.muted = false;
+            audio.volume = 1.0;
+            audio.style.display = "none";
+            document.body.appendChild(audio);
+            audioElementRef.current = audio;
+          }
+          const audioEl = audioElementRef.current!;
+          audioEl.srcObject = stream;
+          const playPromise = audioEl.play();
+          if (playPromise && typeof playPromise.then === "function") {
+            playPromise.catch((err: unknown) => {
+              console.warn(
+                "[Live2DCharacter] Autoplay blocked, waiting for user gesture.",
+                err
+              );
+            });
+          }
+        } catch (err) {
+          console.error("[Live2DCharacter] Failed to play audio:", err);
+        }
+      };
+
       if (audioTrack?.getMediaStreamTrack) {
         console.log(
           "[Live2DCharacter] Received audioTrack, creating MediaStream."
@@ -1087,6 +1116,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
                 setMotionSyncEnabled(false);
                 stopFallbackLipSync();
                 startFallbackLipSync(stream);
+                playHiddenAudio(stream);
               });
           } catch (motionSyncPlayError) {
             console.error(
@@ -1096,6 +1126,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
             setMotionSyncEnabled(false);
             stopFallbackLipSync();
             startFallbackLipSync(stream);
+            playHiddenAudio(stream);
             // Continue without MotionSync if it fails
           }
         } else {
@@ -1103,34 +1134,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
             "[Live2DCharacter] MotionSync not available or disabled, audio will play without lip sync"
           );
           startFallbackLipSync(stream);
-        }
-
-        // Also create and play hidden <audio> element to ensure actual sound
-        try {
-          if (!audioElementRef.current) {
-            const audio = document.createElement("audio");
-            audio.autoplay = true;
-            // playsInline needed in iOS/Safari to avoid fullscreen
-            (audio as any).playsInline = true;
-            audio.muted = false;
-            audio.volume = 1.0;
-            audio.style.display = "none";
-            document.body.appendChild(audio);
-            audioElementRef.current = audio;
-          }
-          const audioEl = audioElementRef.current!;
-          audioEl.srcObject = stream;
-          const playPromise = audioEl.play();
-          if (playPromise && typeof playPromise.then === "function") {
-            playPromise.catch((err: unknown) => {
-              console.warn(
-                "[Live2DCharacter] Autoplay blocked, waiting for user gesture.",
-                err
-              );
-            });
-          }
-        } catch (err) {
-          console.error("[Live2DCharacter] Failed to play audio:", err);
+          playHiddenAudio(stream);
         }
 
         // Reset lip sync when audio track ends
@@ -1138,7 +1142,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
           console.log("[Live2DCharacter] Audio track ended.");
           isDisconnectingRef.current = true; // Set disconnect flag
 
-          if (motionSync && !isDisconnectingRef.current) {
+          if (motionSync) {
             try {
               motionSync.reset();
             } catch (resetError) {
@@ -1164,12 +1168,12 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
 
         stopFallbackLipSync();
 
-        if (motionSync && !isDisconnectingRef.current) {
+        if (motionSync) {
           try {
             // Add a small delay to ensure any ongoing audio processing completes
             setTimeout(() => {
               try {
-                if (!isDisconnectingRef.current && motionSync) {
+                if (motionSync) {
                   motionSync.reset();
                 }
               } catch (resetError) {
@@ -1202,7 +1206,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
 
         stopFallbackLipSync();
 
-        if (motionSync && !isDisconnectingRef.current) {
+        if (motionSync) {
           try {
             motionSync.reset();
           } catch (resetError) {
@@ -1245,7 +1249,7 @@ const Live2DCharacter = forwardRef<Live2DHandle, Live2DCharacterProps>(
           try {
             setTimeout(() => {
               try {
-                if (!isDisconnectingRef.current && motionSyncRef.current) {
+                if (motionSyncRef.current) {
                   motionSyncRef.current.reset();
                 }
               } catch (resetError) {

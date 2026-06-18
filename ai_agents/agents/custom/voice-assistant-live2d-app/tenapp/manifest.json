@@ -147,6 +147,9 @@
       "path": "../../../ten_packages/extension/weatherapi_tool_python"
     },
     {
+      "path": "../../../ten_packages/extension/local_time_tool_python"
+    },
+    {
       "path": "../../../ten_packages/extension/senvoice_tts_python"
     }
   ],

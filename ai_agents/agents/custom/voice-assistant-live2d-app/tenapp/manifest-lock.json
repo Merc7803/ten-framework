@@ -744,6 +744,23 @@
     },
     {
       "type": "extension",
+      "name": "local_time_tool_python",
+      "version": "0.1.0",
+      "hash": "f5035ed2339de29d736e415340139ba536a1f29f8870bae21299521d07c31c05",
+      "dependencies": [
+        {
+          "type": "system",
+          "name": "ten_runtime_python"
+        },
+        {
+          "type": "system",
+          "name": "ten_ai_base"
+        }
+      ],
+      "path": "../../../ten_packages/extension/local_time_tool_python"
+    },
+    {
+      "type": "extension",
       "name": "senvoice_tts_python",
       "version": "0.1.0",
       "hash": "7adcd9b165edcb9e1d0bb295b23e90309ccf90c22629f4e138b1e1974b6347b2",

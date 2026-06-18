@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import TranscriptPanel from "@/components/TranscriptPanel";
 import { connectDesktopTranscriptSources } from "@/lib/desktop-transcript";
+import { DEFAULT_LANGUAGE_MODE, LANGUAGE_MODE_OPTIONS } from "@/lib/language-mode";
 import type { TranscriptMessage } from "@/types";
 
 const DESKTOP_CHANNEL = "desktop-channel";
@@ -24,6 +25,7 @@ function normalizeTranscriptMessage(
 export default function DesktopTranscriptPage() {
   const [connected, setConnected] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [languageMode, setLanguageMode] = useState(DEFAULT_LANGUAGE_MODE);
   const [backendStatus, setBackendStatus] = useState("Waiting for backend");
   const [transcriptMessages, setTranscriptMessages] = useState<
     TranscriptMessage[]
@@ -38,6 +40,9 @@ export default function DesktopTranscriptPage() {
     channel.onmessage = (event) => {
       setConnected(Boolean(event.data?.connected));
       setMuted(Boolean(event.data?.muted));
+      if (event.data?.languageMode) {
+        setLanguageMode(event.data.languageMode);
+      }
       setBackendStatus(event.data?.backendStatus || "Waiting for backend");
     };
 
@@ -59,6 +64,16 @@ export default function DesktopTranscriptPage() {
     });
   }, []);
 
+  const handleLanguageModeChange = (mode: string) => {
+    setLanguageMode(mode);
+    if (typeof BroadcastChannel === "undefined") {
+      return;
+    }
+    const channel = new BroadcastChannel("desktop-language-mode");
+    channel.postMessage({ languageMode: mode });
+    channel.close();
+  };
+
   return (
     <main className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50 text-slate-950">
       <header className="flex shrink-0 items-center justify-between border-slate-200 border-b bg-white px-4 py-3">
@@ -68,9 +83,32 @@ export default function DesktopTranscriptPage() {
             Kevin the Marmot desktop assistant
           </p>
         </div>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 text-xs">
-          {connected ? (muted ? "Muted" : "Connected") : backendStatus}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-md border border-slate-200 bg-slate-100 p-0.5">
+            {LANGUAGE_MODE_OPTIONS.map((option) => {
+              const isActive = option.id === languageMode;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={[
+                    "rounded px-2.5 py-1 font-medium text-xs transition",
+                    isActive
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800",
+                  ].join(" ")}
+                  disabled={connected}
+                  onClick={() => handleLanguageModeChange(option.id)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 text-xs">
+            {connected ? (muted ? "Muted" : "Connected") : backendStatus}
+          </span>
+        </div>
       </header>
 
       <TranscriptPanel

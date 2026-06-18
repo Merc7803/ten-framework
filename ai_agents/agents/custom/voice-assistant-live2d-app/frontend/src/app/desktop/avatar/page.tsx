@@ -12,6 +12,11 @@ import {
   parseDesktopAgoraCredentials,
 } from "@/lib/desktop-session";
 import { publishDesktopTranscriptMessage } from "@/lib/desktop-transcript";
+import {
+  DEFAULT_LANGUAGE_MODE,
+  getLanguageModeGreeting,
+  getLanguageModeOption,
+} from "@/lib/language-mode";
 import { resolveLive2DModelsBaseUrl } from "@/lib/live2d-assets";
 import { apiPing, apiStartService, apiStopService } from "@/lib/request";
 import type { AgoraConfig, TranscriptMessage } from "@/types";
@@ -23,6 +28,7 @@ function publishDesktopSessionState(state: {
   connected: boolean;
   muted: boolean;
   backendStatus: string;
+  languageMode: string;
 }) {
   if (typeof BroadcastChannel === "undefined") {
     return;
@@ -57,6 +63,7 @@ export default function DesktopAvatarPage() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [languageMode, setLanguageMode] = useState(DEFAULT_LANGUAGE_MODE);
   const [isDragging, setIsDragging] = useState(false);
   const [backendStatus, setBackendStatus] = useState("Waiting for backend");
   const [agoraService, setAgoraService] = useState<any>(null);
@@ -81,8 +88,22 @@ export default function DesktopAvatarPage() {
 
   useEffect(() => {
     window.electronDesktop?.setMenuState({ connected, muted });
-    publishDesktopSessionState({ connected, muted, backendStatus });
-  }, [backendStatus, connected, muted]);
+    publishDesktopSessionState({ connected, muted, backendStatus, languageMode });
+  }, [backendStatus, connected, languageMode, muted]);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") {
+      return;
+    }
+
+    const channel = new BroadcastChannel("desktop-language-mode");
+    channel.onmessage = (event) => {
+      const option = getLanguageModeOption(event.data?.languageMode);
+      setLanguageMode(option?.id ?? DEFAULT_LANGUAGE_MODE);
+    };
+
+    return () => channel.close();
+  }, []);
 
   const stopPing = useCallback(() => {
     if (pingIntervalRef.current) {
@@ -188,12 +209,19 @@ export default function DesktopAvatarPage() {
         throw new Error("Failed to connect desktop avatar to Agora");
       }
 
+      const agentGreeting = getLanguageModeGreeting(
+        languageMode,
+        character.name,
+        character.agentGreeting
+      );
+
       await apiStartService(
         buildDesktopAgentStartConfig({
           channel: agoraConfig.channel,
           userId: agoraConfig.uid || uid,
-          greeting: character.agentGreeting,
+          greeting: agentGreeting,
           httpPort: HTTP_CONTROL_PORT,
+          languageMode,
         })
       );
 
@@ -209,7 +237,14 @@ export default function DesktopAvatarPage() {
     } finally {
       setConnecting(false);
     }
-  }, [agoraService, character.agentGreeting, connecting, startPing]);
+  }, [
+    agoraService,
+    character.agentGreeting,
+    character.name,
+    connecting,
+    languageMode,
+    startPing,
+  ]);
 
   useEffect(() => {
     const unsubscribe = window.electronDesktop?.onMenuAction(async (action) => {
