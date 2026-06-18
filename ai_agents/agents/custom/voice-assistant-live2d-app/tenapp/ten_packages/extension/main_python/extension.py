@@ -19,7 +19,7 @@ from .agent.events import (
     UserJoinedEvent,
     UserLeftEvent,
 )
-from .helper import _send_cmd, _send_data, parse_sentences
+from .helper import _send_cmd, _send_data
 from .config import MainControlConfig  # assume extracted from your base model
 
 import uuid
@@ -40,6 +40,7 @@ class MainControlExtension(AsyncExtension):
         self.stopped: bool = False
         self._rtc_user_count: int = 0
         self.sentence_fragment: str = ""
+        self.tts_text_buffer: str = ""
         self.turn_id: int = 0
         self.session_id: str = "0"
 
@@ -125,16 +126,15 @@ class MainControlExtension(AsyncExtension):
     @agent_event_handler(LLMResponseEvent)
     async def _on_llm_response(self, event: LLMResponseEvent):
         if not event.is_final and event.type == "message":
-            sentences, self.sentence_fragment = parse_sentences(
-                self.sentence_fragment, event.delta
+            self.tts_text_buffer = event.text or (
+                self.tts_text_buffer + event.delta
             )
-            for s in sentences:
-                await self._send_to_tts(s, False)
 
         if event.is_final and event.type == "message":
-            remaining_text = self.sentence_fragment or ""
+            complete_text = event.text or self.tts_text_buffer
             self.sentence_fragment = ""
-            await self._send_to_tts(remaining_text, True)
+            self.tts_text_buffer = ""
+            await self._send_to_tts(complete_text, True)
 
         await self._send_transcript(
             "assistant",
@@ -240,6 +240,7 @@ class MainControlExtension(AsyncExtension):
         Interrupts ongoing LLM and TTS generation. Typically called when user speech is detected.
         """
         self.sentence_fragment = ""
+        self.tts_text_buffer = ""
         await self.agent.flush_llm()
         await _send_data(
             self.ten_env, "tts_flush", "tts", {"flush_id": str(uuid.uuid4())}

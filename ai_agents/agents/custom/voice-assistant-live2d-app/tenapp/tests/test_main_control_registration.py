@@ -113,6 +113,67 @@ class MainControlRegistrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(message_ids, ["user-text-100-1", "user-text-100-1"])
         extension.agent.queue_llm_input.assert_awaited_once_with("Hello.")
 
+    async def test_llm_response_sends_one_complete_tts_input_on_final(self):
+        extension = MainControlExtension("main_control")
+        extension.ten_env = FakeTenEnv()
+        extension.session_id = "100"
+        extension.turn_id = 1
+
+        sent_payloads = []
+
+        async def fake_send_data(_ten_env, data_name, dest, payload=None):
+            sent_payloads.append(
+                {
+                    "data_name": data_name,
+                    "dest": dest,
+                    "payload": payload,
+                }
+            )
+
+        with patch(
+            "ten_packages.extension.main_python.extension._send_data",
+            fake_send_data,
+        ):
+            await extension._on_llm_response(
+                LLMResponseEvent(
+                    delta="Xin chao ban! ",
+                    text="Xin chao ban! ",
+                    is_final=False,
+                )
+            )
+            await extension._on_llm_response(
+                LLMResponseEvent(
+                    delta="Minh co the giup gi cho ban?",
+                    text="Xin chao ban! Minh co the giup gi cho ban?",
+                    is_final=False,
+                )
+            )
+            await extension._on_llm_response(
+                LLMResponseEvent(
+                    delta="",
+                    text="Xin chao ban! Minh co the giup gi cho ban?",
+                    is_final=True,
+                )
+            )
+
+        tts_payloads = [
+            item["payload"]
+            for item in sent_payloads
+            if item["data_name"] == "tts_text_input"
+        ]
+
+        self.assertEqual(
+            tts_payloads,
+            [
+                {
+                    "request_id": "tts-request-1",
+                    "text": "Xin chao ban! Minh co the giup gi cho ban?",
+                    "text_input_end": True,
+                    "metadata": {"session_id": "100", "turn_id": 1},
+                }
+            ],
+        )
+
     async def test_on_stop_is_safe_when_agent_was_never_initialized(self):
         extension = MainControlExtension("main_control")
         ten_env = FakeTenEnv()
