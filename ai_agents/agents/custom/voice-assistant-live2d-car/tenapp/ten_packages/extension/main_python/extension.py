@@ -42,6 +42,69 @@ ALLOWED_CAR_TARGETS = {
     "windows.driver",
     "windows.passenger",
 }
+CAR_TARGET_ALIASES = {
+    "climate": {
+        "ac": "climate.ac",
+        "temperature": "climate.temperature",
+        "fan": "climate.fan",
+    },
+    "media": {
+        "volume": "media.volume",
+        "playback": "media.playback",
+        "playing": "media.playback",
+    },
+    "navigation": {
+        "destination": "navigation.destination",
+    },
+    "lights": {
+        "headlights": "lights.headlights",
+        "cabin": "lights.cabin",
+    },
+    "locks": {
+        "doors": "locks.doors",
+        "doorsLocked": "locks.doors",
+    },
+    "windows": {
+        "driver": "windows.driver",
+        "passenger": "windows.passenger",
+    },
+}
+
+
+def create_default_car_state() -> dict:
+    return {
+        "climate": {
+            "ac": False,
+            "temperature": 24,
+            "fan": 1,
+        },
+        "media": {
+            "volume": 35,
+            "playing": False,
+        },
+        "navigation": {
+            "destination": "",
+        },
+        "lights": {
+            "headlights": False,
+            "cabin": False,
+        },
+        "locks": {
+            "doorsLocked": True,
+        },
+        "windows": {
+            "driver": 0,
+            "passenger": 0,
+        },
+    }
+
+
+def clamp_number(value, minimum: int, maximum: int) -> int:
+    try:
+        numeric_value = int(value)
+    except (TypeError, ValueError):
+        return minimum
+    return min(maximum, max(minimum, numeric_value))
 
 
 class MainControlExtension(AsyncExtension):
@@ -64,6 +127,7 @@ class MainControlExtension(AsyncExtension):
         self.session_id: str = "0"
         self.voice_awake: bool = True
         self.last_user_activity_ts: float = time.monotonic()
+        self.car_state: dict = create_default_car_state()
 
     def _current_metadata(self) -> dict:
         return {"session_id": self.session_id, "turn_id": self.turn_id}
@@ -156,7 +220,7 @@ class MainControlExtension(AsyncExtension):
         if event.final:
             self.turn_id = transcript_turn_id
             self.last_user_activity_ts = time.monotonic()
-            await self.agent.queue_llm_input(text)
+            await self.agent.queue_llm_input(self._build_car_llm_input(text))
         await self._send_transcript(
             "user",
             text,
@@ -181,6 +245,7 @@ class MainControlExtension(AsyncExtension):
             self.tts_text_buffer = ""
             await self._send_to_tts(assistant_text, True)
             if car_commands:
+                self._apply_car_commands(car_commands)
                 await self._send_car_command_event(car_commands)
             await self._send_transcript(
                 "assistant",
@@ -235,18 +300,83 @@ class MainControlExtension(AsyncExtension):
         return False, text
 
     def _parse_car_assistant_response(self, text: str) -> tuple[str, list[dict]]:
+        json_text = self._extract_json_text(text)
         try:
-            payload = json.loads(text)
+            payload = json.loads(json_text)
         except (TypeError, json.JSONDecodeError):
             return text, []
 
         if not isinstance(payload, dict):
             return text, []
 
-        reply = str(payload.get("reply") or "").strip() or text
         commands = payload.get("commands", [])
+        if not isinstance(commands, list) or not commands:
+            commands = self._commands_from_legacy_payload(payload)
+
+        valid_commands = self._validate_car_commands(commands)
+        reply = str(payload.get("reply") or "").strip()
+        if not reply and valid_commands:
+            reply = self._build_command_reply(valid_commands)
+        if not reply:
+            reply = text
+        return reply, valid_commands
+
+    def _extract_json_text(self, text: str) -> str:
+        stripped = text.strip()
+        fenced_match = re.search(
+            r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE
+        )
+        if fenced_match:
+            return fenced_match.group(1).strip()
+        return stripped
+
+    def _commands_from_legacy_payload(self, payload: dict) -> list[dict]:
+        commands = []
+        grouped_commands = self._commands_from_grouped_target_payload(payload)
+        if grouped_commands:
+            commands.extend(grouped_commands)
+
+        for group, aliases in CAR_TARGET_ALIASES.items():
+            section = payload.get(group)
+            if not isinstance(section, dict):
+                continue
+            for action_name, target in aliases.items():
+                if action_name in section:
+                    commands.append(
+                        {
+                            "target": target,
+                            "action": "set",
+                            "value": section.get(action_name),
+                        }
+                    )
+        return commands
+
+    def _commands_from_grouped_target_payload(self, payload: dict) -> list[dict]:
+        group = payload.get("target")
+        actions = payload.get("action")
+        if not isinstance(group, str) or not isinstance(actions, dict):
+            return []
+
+        group_aliases = CAR_TARGET_ALIASES.get(group)
+        if not group_aliases:
+            return []
+
+        commands = []
+        for action_name, value in actions.items():
+            target = group_aliases.get(action_name)
+            if target:
+                commands.append(
+                    {
+                        "target": target,
+                        "action": "set",
+                        "value": value,
+                    }
+                )
+        return commands
+
+    def _validate_car_commands(self, commands: list[dict]) -> list[dict]:
         if not isinstance(commands, list):
-            return reply, []
+            return []
 
         valid_commands = []
         for command in commands:
@@ -263,7 +393,70 @@ class MainControlExtension(AsyncExtension):
                     "value": command.get("value"),
                 }
             )
-        return reply, valid_commands
+        return valid_commands
+
+    def _build_command_reply(self, commands: list[dict]) -> str:
+        command = commands[0]
+        target = command.get("target")
+        value = command.get("value")
+        if target == "climate.temperature":
+            return (
+                f"\u0110\u00e3 \u0111i\u1ec1u ch\u1ec9nh nhi\u1ec7t \u0111\u1ed9 th\u00e0nh {value} \u0111\u1ed9, "
+                "b\u1ea1n c\u00f3 c\u1ea7n m\u00ecnh gi\u00fap \u0111\u1ee1 g\u00ec th\u00eam kh\u00f4ng?"
+            )
+        if target == "climate.fan":
+            return (
+                f"\u0110\u00e3 \u0111i\u1ec1u ch\u1ec9nh qu\u1ea1t l\u00ean m\u1ee9c {value}, "
+                "b\u1ea1n c\u00f3 c\u1ea7n m\u00ecnh gi\u00fap \u0111\u1ee1 g\u00ec th\u00eam kh\u00f4ng?"
+            )
+        if target == "media.volume":
+            return (
+                f"\u0110\u00e3 \u0111i\u1ec1u ch\u1ec9nh \u00e2m l\u01b0\u1ee3ng th\u00e0nh m\u1ee9c {value}, "
+                "b\u1ea1n c\u00f3 c\u1ea7n m\u00ecnh gi\u00fap \u0111\u1ee1 g\u00ec th\u00eam kh\u00f4ng?"
+            )
+        return (
+            "\u0110\u00e3 \u0111i\u1ec1u ch\u1ec9nh theo y\u00eau c\u1ea7u, "
+            "b\u1ea1n c\u00f3 c\u1ea7n m\u00ecnh gi\u00fap \u0111\u1ee1 g\u00ec th\u00eam kh\u00f4ng?"
+        )
+
+    def _build_car_llm_input(self, text: str) -> str:
+        return (
+            "CURRENT_CAR_STATE:\n"
+            f"{json.dumps(self.car_state, ensure_ascii=False)}\n\n"
+            "USER_MESSAGE:\n"
+            f"{text}\n\n"
+            "Use CURRENT_CAR_STATE to answer status questions. "
+            "For control requests, return command JSON using the supported targets."
+        )
+
+    def _apply_car_commands(self, commands: list[dict]):
+        for command in commands:
+            target = command.get("target")
+            value = command.get("value")
+            if target == "climate.ac":
+                self.car_state["climate"]["ac"] = bool(value)
+            elif target == "climate.temperature":
+                self.car_state["climate"]["temperature"] = clamp_number(
+                    value, 16, 30
+                )
+            elif target == "climate.fan":
+                self.car_state["climate"]["fan"] = clamp_number(value, 0, 5)
+            elif target == "media.volume":
+                self.car_state["media"]["volume"] = clamp_number(value, 0, 100)
+            elif target == "media.playback":
+                self.car_state["media"]["playing"] = bool(value)
+            elif target == "navigation.destination":
+                self.car_state["navigation"]["destination"] = str(value or "")
+            elif target == "lights.headlights":
+                self.car_state["lights"]["headlights"] = bool(value)
+            elif target == "lights.cabin":
+                self.car_state["lights"]["cabin"] = bool(value)
+            elif target == "locks.doors":
+                self.car_state["locks"]["doorsLocked"] = bool(value)
+            elif target == "windows.driver":
+                self.car_state["windows"]["driver"] = clamp_number(value, 0, 100)
+            elif target == "windows.passenger":
+                self.car_state["windows"]["passenger"] = clamp_number(value, 0, 100)
 
     async def _send_car_command_event(self, commands: list[dict]):
         await _send_data(

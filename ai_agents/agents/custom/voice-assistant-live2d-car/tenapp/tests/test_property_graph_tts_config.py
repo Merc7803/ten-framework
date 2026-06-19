@@ -49,6 +49,15 @@ class PropertyGraphTTSConfigTest(unittest.TestCase):
         self.assertIn("climate.ac", prompt)
         self.assertIn("locks.doors", prompt)
 
+    def test_live2d_car_prompt_teaches_state_queries_and_fan_commands(self):
+        llm_node = self._node("llm")
+        prompt = llm_node["property"]["prompt"]
+
+        self.assertIn("CURRENT_CAR_STATE", prompt)
+        self.assertIn("t\u1ed1c \u0111\u1ed9 qu\u1ea1t", prompt)
+        self.assertIn("t\u0103ng qu\u1ea1t l\u00ean m\u1ee9c 2", prompt)
+        self.assertIn('"target":"climate.fan"', prompt)
+
 
 if __name__ == "__main__":
     unittest.main()
