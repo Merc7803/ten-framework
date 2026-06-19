@@ -199,16 +199,8 @@ class MainControlExtension(AsyncExtension):
         text = event.text.strip()
         wake_detected, command_text = self._extract_wake_command(text)
         if wake_detected:
-            self.voice_awake = True
-            self.last_user_activity_ts = time.monotonic()
-            await self._send_car_session_state("awake")
             text = command_text
-        elif self._is_voice_idle_expired():
-            self.voice_awake = False
-            await self._send_car_session_state("sleeping")
-
-        if not self.voice_awake:
-            return
+        self.voice_awake = True
 
         if not text:
             await self._send_transcript("assistant", "M\u00ecnh \u0111ang nghe.", True, 100)

@@ -215,7 +215,7 @@ class CarAssistantBehaviorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(transcript_payloads[0]["text"], expected)
         self.assertEqual(session_state_payloads[0]["session_state"], "awake")
 
-    async def test_sleeping_assistant_ignores_command_without_wake_word(self):
+    async def test_assistant_processes_command_even_when_marked_sleeping(self):
         extension = self._build_extension()
         extension.voice_awake = False
         extension._interrupt = AsyncMock()
@@ -235,11 +235,13 @@ class CarAssistantBehaviorTest(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
-        extension.agent.queue_llm_input.assert_not_awaited()
+        queued_text = extension.agent.queue_llm_input.await_args.args[0]
+        self.assertIn("b\u1eadt \u0111i\u1ec1u h\u00f2a", queued_text)
+        self.assertTrue(extension.voice_awake)
 
-    async def test_wake_word_with_inline_command_wakes_and_processes_command(self):
+    async def test_assistant_processes_command_after_idle_timeout_without_wake_word(self):
         extension = self._build_extension()
-        extension.voice_awake = False
+        extension.last_user_activity_ts -= 31
         extension._interrupt = AsyncMock()
 
         async def fake_send_data(_ten_env, _data_name, _dest, payload=None):
@@ -251,7 +253,7 @@ class CarAssistantBehaviorTest(unittest.IsolatedAsyncioTestCase):
         ):
             await extension._on_asr_result(
                 ASRResultEvent(
-                    text="hey ma m\u00f3t b\u1eadt \u0111i\u1ec1u h\u00f2a",
+                    text="b\u1eadt \u0111i\u1ec1u h\u00f2a",
                     final=True,
                     metadata={"session_id": "100"},
                 )
