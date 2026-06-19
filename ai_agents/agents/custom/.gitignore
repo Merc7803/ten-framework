@@ -18,6 +18,7 @@
 */tenapp/bin/
 */tenapp/bin/main
 */tenapp/.ten/
+*/tenapp/ten_packages/**/.ten/
 */tenapp/.cache/
 */tenapp/compile_commands.json
 
@@ -29,6 +30,8 @@
 !*/tenapp/ten_packages/extension/main_python/**
 !*/tenapp/ten_packages/extension/http_server_python/
 !*/tenapp/ten_packages/extension/http_server_python/**
+*/tenapp/ten_packages/extension/*/.ten/
+*/tenapp/ten_packages/extension/*/.ten/**
 
 # Runtime/cache artifacts
 __pycache__/

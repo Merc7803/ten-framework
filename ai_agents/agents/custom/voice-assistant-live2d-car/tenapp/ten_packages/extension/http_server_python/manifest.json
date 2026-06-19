@@ -1,0 +1,49 @@
+{
+  "type": "extension",
+  "name": "http_server_python",
+  "version": "0.12.0",
+  "dependencies": [
+    {
+      "type": "system",
+      "name": "ten_runtime_python",
+      "version": "0.11"
+    }
+  ],
+  "package": {
+    "include": [
+      "manifest.json",
+      "property.json",
+      "**.py",
+      "requirements.txt",
+      "README.md"
+    ]
+  },
+  "api": {
+    "property": {
+      "properties": {
+        "listen_addr": {
+          "type": "string"
+        },
+        "listen_port": {
+          "type": "int32"
+        }
+      }
+    },
+    "cmd_out": [
+      {
+        "name": "http_cmd",
+        "property": {
+          "properties": {}
+        }
+      }
+    ],
+    "data_out": [
+      {
+        "name": "http_data",
+        "property": {
+          "properties": {}
+        }
+      }
+    ]
+  }
+}
