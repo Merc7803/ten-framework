@@ -23,6 +23,12 @@ test("buildLanguageModeStartProperties configures Vietnamese conversation with V
   assert.equal(properties.tts.params.lang, "vi");
   assert.equal(properties.llm.greeting, "Xin chao Kevin");
   assert.match(properties.llm.prompt, /Vietnamese/);
+  assert.match(properties.llm.prompt, /general-purpose assistant/i);
+  assert.match(properties.llm.prompt, /car control is only one extra capability/i);
+  assert.match(
+    properties.llm.prompt,
+    /Do not present car controls as your only capabilities/i
+  );
   assert.match(properties.llm.prompt, /tiếng Việt/i);
 });
 

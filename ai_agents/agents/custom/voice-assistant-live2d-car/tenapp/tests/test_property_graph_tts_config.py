@@ -58,6 +58,15 @@ class PropertyGraphTTSConfigTest(unittest.TestCase):
         self.assertIn("t\u0103ng qu\u1ea1t l\u00ean m\u1ee9c 2", prompt)
         self.assertIn('"target":"climate.fan"', prompt)
 
+    def test_live2d_car_prompt_keeps_general_assistant_capabilities_first(self):
+        llm_node = self._node("llm")
+        prompt = llm_node["property"]["prompt"]
+
+        self.assertIn("general-purpose assistant", prompt)
+        self.assertIn("car control is only one extra capability", prompt)
+        self.assertIn("Do not present car controls as your only capabilities", prompt)
+        self.assertIn("When asked what you can do", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()
